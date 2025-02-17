@@ -1,36 +1,37 @@
-.PHONY: setup rebuild start superuser migrations migrate pull-production-data pull-production-media pull-staging-data pull-staging-media
+# ----------------------------------------------------------------------------
+# Self-Documented Makefile
+# ref: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
+# ----------------------------------------------------------------------------
+.PHONY: help
+.DEFAULT_GOAL := help
 
-setup:
-	make rebuild
+help:  ## ⁉️  - Display help comments for each make command
+	@grep -E '^[0-9a-zA-Z_-]+:.*? .*$$'  \
+		$(MAKEFILE_LIST)  \
+		| awk 'BEGIN { FS=":.*?## " }; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'  \
+		| sort
+
+setup: build  ## 🔨 - Set instance up
 	docker-compose run web django-admin migrate
 	docker-compose run web django-admin createcachetable
 
-rebuild:
-	bash -c "docker-compose build --build-arg UID=$$(id -u) --build-arg DOCKER_GID=$$(ls -ln /var/run/docker.sock | awk '{print $$4}')"
+build:  ## 🔨 - Build Docker container
+	bash -c "docker-compose build --build-arg UID=$$(id -u) --build-arg GID=$$(id -g)"
 
-start:
+start:	## 🎬 - Start containers
 	docker-compose up
 
-runserver:
+sh:	## Enter the web container
+	docker-compose exec web bash
+
+runserver:	## 🏃 - Run Django server
 	docker-compose exec web django-admin runserver 0.0.0.0:8000
 
-superuser:
+superuser:	## 🔒 - Create superuser
 	docker-compose run web django-admin createsuperuser
 
-migrations:
-	docker-compose run web django-admin migrations
+migrations:	## 🧳 - Make migrations
+	docker-compose run web django-admin makemigrations
 
-migrate:
+migrate:  ## 🧳 - Migrate
 	docker-compose run web django-admin migrate
-
-pull-production-data:
-	docker-compose run web fab pull_production_data
-
-pull-production-media:
-	docker-compose run web fab pull_production_media
-
-pull-staging-data:
-	docker-compose run web fab pull_staging_data
-
-pull-staging-media:
-	docker-compose run web fab pull_staging_media

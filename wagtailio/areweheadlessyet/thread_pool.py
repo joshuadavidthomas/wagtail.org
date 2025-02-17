@@ -1,8 +1,10 @@
-import logging
 from concurrent.futures import ThreadPoolExecutor
+import logging
+
+from django.conf import settings
 
 import requests
-from django.conf import settings
+
 
 logger = logging.getLogger("wagtailio")
 

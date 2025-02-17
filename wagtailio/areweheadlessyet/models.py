@@ -1,11 +1,13 @@
 from django.db import models
-from wagtail.admin.edit_handlers import FieldPanel, MultiFieldPanel, StreamFieldPanel
+
+from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.api import APIField
-from wagtail.core.fields import RichTextField, StreamField
-from wagtail.core.models import Page
+from wagtail.fields import RichTextField, StreamField
+from wagtail.models import Page
 from wagtail.snippets.models import register_snippet
 
 from wagtailio.areweheadlessyet.blocks import HomePageBlock, TopicPageBlock
+from wagtailio.areweheadlessyet.fields import ImageRenditionURLField
 from wagtailio.utils.models import CrossPageMixin, SocialMediaMixin
 
 
@@ -47,7 +49,7 @@ class AreWeHeadlessYetHomePage(Page, SocialMediaMixin, CrossPageMixin):
             ],
             "strapline",
         ),
-        StreamFieldPanel("body"),
+        FieldPanel("body"),
     ]
 
     api_fields = [
@@ -55,6 +57,14 @@ class AreWeHeadlessYetHomePage(Page, SocialMediaMixin, CrossPageMixin):
         APIField("strapline_icon"),
         APIField("strapline_text"),
         APIField("body"),
+    ]
+
+    api_meta_fields = [
+        APIField("social_text"),
+        APIField(
+            "social_image_url",
+            serializer=ImageRenditionURLField("fill-100x100", source="social_image"),
+        ),
     ]
 
     promote_panels = (
@@ -86,7 +96,7 @@ class AreWeHeadlessYetTopicPage(Page, SocialMediaMixin, CrossPageMixin):
     content_panels = Page.content_panels + [
         FieldPanel("status_color"),
         FieldPanel("introduction"),
-        StreamFieldPanel("body"),
+        FieldPanel("body"),
     ]
 
     api_fields = [

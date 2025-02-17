@@ -4,9 +4,11 @@ from django.db import models
 from django.db.models import Prefetch
 from django.db.models.functions import Lower
 from django.urls import reverse
-from wagtail.admin.edit_handlers import FieldPanel, HelpPanel, MultiFieldPanel
-from wagtail.core.fields import RichTextField
-from wagtail.core.models import Page
+
+from wagtail.admin.panels import FieldPanel, HelpPanel, MultiFieldPanel
+from wagtail.fields import RichTextField
+from wagtail.models import Page
+from wagtail.search import index
 
 from wagtailio.utils.models import CrossPageMixin, SocialMediaMixin
 
@@ -58,6 +60,12 @@ class PackagesPage(Page, SocialMediaMixin, CrossPageMixin):
         FieldPanel("about_text"),
     ]
 
+    search_fields = Page.search_fields + [
+        index.SearchField("subtitle"),
+        index.SearchField("about_title"),
+        index.SearchField("about_text"),
+    ]
+
 
 class Package(models.Model):
     publish = models.BooleanField(default=True)
@@ -96,7 +104,8 @@ class Package(models.Model):
         return self.pypi_url
 
     def get_admin_url(self):
-        return reverse("packages_package_modeladmin_edit", args=(self.id,))
+        if hasattr(self, "model_viewset"):
+            return reverse(self.model_viewset.get_url_name("edit"), args=(self.id,))
 
     def links(self):
         links = []
@@ -139,7 +148,8 @@ class Grid(models.Model):
         return f"https://djangopackages.org/grids/g/{self.slug}/"
 
     def get_admin_url(self):
-        return reverse("packages_grid_modeladmin_edit", args=(self.id,))
+        if hasattr(self, "model_viewset"):
+            return reverse(self.model_viewset.get_url_name("edit"), args=(self.id,))
 
     def display_title(self):
         return (

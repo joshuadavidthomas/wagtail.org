@@ -1,19 +1,17 @@
 from django.db import models
 
-from wagtail.admin.edit_handlers import FieldPanel, InlinePanel, StreamFieldPanel
-from wagtail.core.fields import RichTextField, StreamField
-from wagtail.core.models import Page, Orderable
-from wagtail.images.edit_handlers import ImageChooserPanel
-from wagtail.snippets.edit_handlers import SnippetChooserPanel
-from wagtail.snippets.models import register_snippet
-
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
+from wagtail.admin.panels import FieldPanel, InlinePanel
+from wagtail.fields import RichTextField, StreamField
+from wagtail.models import Orderable, Page
+from wagtail.search import index
+from wagtail.snippets.models import register_snippet
 
-from wagtail_airtable.mixins import AirtableMixin
 from wagtailmedia.edit_handlers import MediaChooserPanel
 
-from wagtailio.features.blocks import FeatureIndexPageBlock
+from wagtailio.core.blocks import StandaloneCTABlock
+from wagtailio.features.blocks import FeatureIndexBlock
 
 
 class Bullet(Orderable, models.Model):
@@ -22,6 +20,9 @@ class Bullet(Orderable, models.Model):
     text = RichTextField()
 
     panels = [FieldPanel("title"), FieldPanel("text")]
+
+    def __str__(self) -> str:
+        return f"Bullet: {self.title}"
 
 
 @register_snippet
@@ -36,23 +37,23 @@ class FeatureAspect(ClusterableModel):
         related_name="+",
     )
     video = models.ForeignKey(
-        'wagtailmedia.Media',
+        "wagtailmedia.Media",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='+'
+        related_name="+",
     )
-
-    def __str__(self):
-        return self.title
 
     panels = [
         FieldPanel("title"),
         InlinePanel("bullets", label="Bullets"),
-        ImageChooserPanel("screenshot"),
+        FieldPanel("screenshot"),
         FieldPanel("video_url"),
-        MediaChooserPanel('video'),
+        MediaChooserPanel("video"),
     ]
+
+    def __str__(self) -> str:
+        return f"FeatureAspect: {self.title}"
 
 
 class FeaturePageFeatureAspect(Orderable, models.Model):
@@ -61,11 +62,14 @@ class FeaturePageFeatureAspect(Orderable, models.Model):
         "features.FeatureAspect", models.CASCADE, related_name="+"
     )
 
-    panels = [SnippetChooserPanel("feature_aspect")]
+    panels = [FieldPanel("feature_aspect")]
+
+    def __str__(self) -> str:
+        return f"FeaturePageFeatureAspect: Page ({self.page_id} FeatureAspect({self.feature_aspect_id})"
 
 
 @register_snippet
-class FeatureDescription(AirtableMixin, ClusterableModel):
+class FeatureDescription(ClusterableModel):
     title = models.CharField(max_length=255)
     introduction = models.CharField(max_length=255, blank=True)
     documentation_link = models.URLField(max_length=255, blank=True)
@@ -79,39 +83,29 @@ class FeatureDescription(AirtableMixin, ClusterableModel):
     def __str__(self):
         return self.title
 
-    @classmethod
-    def map_import_fields(cls):
-        """
-        Maps Airtable columns to Django Model Fields.
-        """
-        mappings = {
-            "Title": "title",
-            "Introduction": "introduction",
-            "Documentation": "documentation_link"
-        }
-        return mappings
-
-    def get_export_fields(self):
-        """
-        Get field mappings for Airtable when saving a model object.
-        """
-        return {
-            "ID": self.id,
-            "Title": self.title,
-            "Introduction": self.introduction,
-            "Documentation": self.documentation_link
-        }
-
-
-class FeatureIndexPageMenuOption(models.Model):
-    page = ParentalKey(
-        "features.FeatureIndexPage", related_name="secondary_menu_options"
-    )
-    link = models.ForeignKey("wagtailcore.Page", models.CASCADE, related_name="+")
-    label = models.CharField(max_length=255)
-
 
 class FeatureIndexPage(Page):
-    body = StreamField(FeatureIndexPageBlock())
+    template = "patterns/pages/feature_index_page/feature_index_page.html"
 
-    content_panels = Page.content_panels + [StreamFieldPanel("body")]
+    subheading = models.TextField(verbose_name="Sub heading", blank=True)
+    features = StreamField([("features", FeatureIndexBlock())], blank=True, max_num=1)
+    cta = StreamField([("cta", StandaloneCTABlock())], blank=True, max_num=1)
+    get_started = models.ForeignKey(
+        "core.GetStartedSnippet",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    content_panels = Page.content_panels + [
+        FieldPanel("subheading"),
+        FieldPanel("features", classname="collapsible"),
+        FieldPanel("cta", heading="Call to action"),
+        FieldPanel("get_started"),
+    ]
+
+    search_fields = Page.search_fields + [
+        index.SearchField("subheading"),
+        index.SearchField("features"),
+    ]

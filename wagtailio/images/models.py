@@ -4,15 +4,8 @@ from django.dispatch.dispatcher import receiver
 
 from wagtail.images.models import AbstractImage, AbstractRendition
 
-from wagtail_image_import.models import DuplicateFindingMixin
 
-
-class WagtailIOImage(DuplicateFindingMixin, AbstractImage):
-    alternative_text = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="The alternative text for the image, provided for the benefit of visually impaired users",
-    )
+class WagtailIOImage(AbstractImage):
     admin_form_fields = (
         "title",
         "file",

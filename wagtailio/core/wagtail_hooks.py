@@ -1,46 +1,13 @@
-from django.conf import settings
-from django.core.files.storage import get_storage_class
+from django.core.files.storage import default_storage
 from django.shortcuts import redirect
 from django.utils.cache import add_never_cache_headers
-from django.utils.html import format_html, format_html_join
-from wagtail.core import hooks
-from wagtail.core.whitelist import allow_without_attributes
+
+from wagtail import hooks
 from wagtail.documents import get_document_model
 from wagtail.documents.models import document_served
+from wagtail.whitelist import allow_without_attributes
 
-from storages.backends.s3boto3 import S3Boto3Storage
-
-
-def editor_js():
-    js_files = ["js/vendor/hallo-code.js"]
-    js_includes = format_html_join(
-        "\n",
-        '<script src="{0}{1}"></script>',
-        ((settings.STATIC_URL, filename) for filename in js_files),
-    )
-
-    return js_includes + format_html(
-        """
-        <script>
-            registerHalloPlugin('halloheadings');
-            registerHalloPlugin('hallocode');
-        </script>
-        """
-    )
-
-
-hooks.register("insert_editor_js", editor_js)
-
-
-def editor_css():
-    return format_html(
-        '<link rel="stylesheet" href="'
-        + settings.STATIC_URL
-        + 'css/vendor/font-awesome.min.css">'
-    )
-
-
-hooks.register("insert_editor_css", editor_css)
+from storages.backends.s3 import S3Storage
 
 
 @hooks.register("construct_whitelister_element_rules")
@@ -50,6 +17,24 @@ def whitelister_element_rules():
         "pre": allow_without_attributes,
         "code": allow_without_attributes,
     }
+
+
+@hooks.register("register_icons")
+def register_icons(icons):
+    return icons + [
+        "wagtailfontawesomesvg/solid/address-card.svg",
+        "wagtailfontawesomesvg/solid/bars.svg",
+        "wagtailfontawesomesvg/solid/bullhorn.svg",
+        "wagtailfontawesomesvg/solid/cube.svg",
+        "wagtailfontawesomesvg/solid/envelope-open-text.svg",
+        "wagtailfontawesomesvg/solid/gem.svg",
+        "wagtailfontawesomesvg/solid/image.svg",
+        "wagtailfontawesomesvg/solid/images.svg",
+        "wagtailfontawesomesvg/solid/rectangle-list.svg",
+        "wagtailfontawesomesvg/solid/newspaper.svg",
+        "wagtailfontawesomesvg/solid/table-list.svg",
+        "wagtailfontawesomesvg/solid/rocket.svg",
+    ]
 
 
 # It's important that this hooks runs after all the other hooks,
@@ -63,7 +48,7 @@ def serve_document_from_s3(document, request):
     and potentially risking DoS attack and the server timing out.
     """
     # Skip this hook if not using django-storages boto3 backend.
-    if not issubclass(get_storage_class(), S3Boto3Storage):
+    if not isinstance(default_storage, S3Storage):
         return
 
     # Send document_served signal, same as Wagtail does.

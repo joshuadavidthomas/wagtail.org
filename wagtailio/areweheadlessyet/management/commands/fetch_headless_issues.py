@@ -1,5 +1,6 @@
-import requests
 from django.core.management.base import BaseCommand
+
+import requests
 
 from wagtailio.areweheadlessyet.models import WagtailHeadlessIssue
 
@@ -11,6 +12,7 @@ class Command(BaseCommand):
         response = requests.get(
             "https://api.github.com/repos/wagtail/wagtail/issues",
             params={"labels": "headless"},
+            timeout=10,
         )
         response.raise_for_status()
 
@@ -22,7 +24,9 @@ class Command(BaseCommand):
         new_issues_count = 0
         for issue in issues:
             # Delete issue when it's closed.
-            if (issue_number := issue["number"]) in issues_in_db and issue["state"] == "closed":
+            if (issue_number := issue["number"]) in issues_in_db and issue[
+                "state"
+            ] == "closed":
                 to_delete.append(issue_number)
             else:
                 _, created = WagtailHeadlessIssue.objects.update_or_create(
